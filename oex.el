@@ -56,6 +56,7 @@
         (let ((arg-expand (list (expand-file-name (car args)))))
           (dolist (opt (cdar i)) (push opt arg-expand))
           (apply #'start-process (caar i) nil (caar i) arg-expand))
+        (kill-buffer nil)
         (when (featurep 'recentf) (recentf-add-file (car args)))
         ;; Avoid fallthrough to other handlers if matched and run.
         (error "Opened %s in external program" (file-name-nondirectory (car args))))))
