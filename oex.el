@@ -75,7 +75,7 @@
         (put 'oex--run 'safe-magic t)
         (put 'oex--run 'operations '(insert-file-contents))
         (push '("" . oex--run) file-name-handler-alist))
-    (rassq-delete-all 'oex-file-handler file-name-handler-alist)))
+    (rassq-delete-all 'oex--run file-name-handler-alist)))
 (provide 'oex)
 
 ;;; oex.el ends here
