@@ -26,10 +26,9 @@
 
 ;;; Commentary:
 
-;; Open files whose extensions matched in `oex-assoc' with the paired
-;; program.  Run with `start-process' to avoid opening an
-;; `async-shell-command' buffer.  Derived from Markus Triska's
-;; `openwith'.  Written with Unix users in mind.
+;; Open files whose extensions match in `oex-assoc' with the paired
+;; program, using `start-process' to avoid `async-shell-command'
+;; buffers.  Derived from `openwith'.  Written for Unix users.
 
 ;;; Code:
 (defgroup oex nil
@@ -37,25 +36,23 @@
   :group 'files
   :group 'processes
   :prefix "oex-")
-(defcustom oex-assoc '((("zathura" "--fork") "pdf")
-                       (("mpv" "--ontop") "mp4" "mpeg" "mkv" "avi" "wmv")
-                       (("imv") "png" "jpg" "jpeg" "webp"))
+(defcustom oex-assoc '((("zathura" "--fork") "pdf" "eps" "ps")
+                       (("mpv" "--ontop") "mp4" "mpeg" "mkv" "avi" "wmv"))
   "Programs (and their options) paired with file extensions."
   :group 'oex
   :type '(repeat (list (list (string :tag "Program & Options"))
                        (list (string :tag "Extensions")))))
-(defcustom oex-confirm-invocation nil
+(defcustom oex-confirm nil
   "Ask for confirmation before invoking external programs."
   :group 'oex
   :type 'boolean)
-(defun oex--handle-file (op &rest args)
-  "If file at start of ARGS matches `oex-assoc', run externally; else, apply OP."
+(defun oex--run (op &rest args)
+  "If file at head of ARGS matches `oex-assoc', run externally; else, apply OP."
   (when (and (bound-and-true-p oex-mode) (not (buffer-modified-p)) (zerop (buffer-size)))
     (dolist (i (let (l) (dolist (s oex-assoc l) ;; i = (("program" "opt1"...) . "regex")
                           (push (cons (car s) (concat "\\." (regexp-opt (cdr s))  "$")) l))))
       (when (and (save-match-data (string-match (cdr i) (car args)))
-                 (or (not oex-confirm-invocation)
-                     (y-or-n-p (format "%s %s? " (caar i) (car args)))))
+                 (or (not oex-confirm) (y-or-n-p (format "%s %s? " (caar i) (car args)))))
         (let ((arg-expand (list (expand-file-name (car args)))))
           (dolist (opt (cdar i)) (push opt arg-expand))
           (apply #'start-process (caar i) nil (caar i) arg-expand))
@@ -63,8 +60,7 @@
         ;; Avoid fallthrough to other handlers if matched and run.
         (error "Opened %s in external program" (file-name-nondirectory (car args))))))
   (let ((inhibit-file-name-handlers
-         (cons 'oex--handle-file (and (eq inhibit-file-name-operation op)
-                                     inhibit-file-name-handlers)))
+         (cons 'oex--run (and (eq inhibit-file-name-operation op) inhibit-file-name-handlers)))
         (inhibit-file-name-operation op))
     (apply op args)))
 ;;;###autoload
@@ -74,10 +70,10 @@
   :global t
   (if oex-mode
       (progn
-        ;; register `oex--handle-file' for all files
-        (put 'oex--handle-file 'safe-magic t)
-        (put 'oex--handle-file 'operations '(insert-file-contents))
-        (push '("" . oex--handle-file) file-name-handler-alist))
+        ;; register `oex--run' for all files
+        (put 'oex--run 'safe-magic t)
+        (put 'oex--run 'operations '(insert-file-contents))
+        (push '("" . oex--run) file-name-handler-alist))
     (rassq-delete-all 'oex-file-handler file-name-handler-alist)))
 (provide 'oex)
 
